@@ -54,6 +54,13 @@ create table if not exists public.issues (
 );
 create index if not exists issues_created_idx on public.issues (created_at desc);
 
+-- Table access for the app. Newer Supabase projects don't grant this automatically.
+-- Row-level security (below) still decides which rows each person can see or change.
+grant usage on schema public to anon, authenticated;
+grant select on public.locations to anon;
+grant insert on public.issues to anon;
+grant select, insert, update, delete on public.locations, public.audits, public.issues to authenticated;
+
 alter table public.locations enable row level security;
 alter table public.audits    enable row level security;
 alter table public.issues    enable row level security;
