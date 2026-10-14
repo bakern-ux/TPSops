@@ -7,8 +7,8 @@ window.TPS_CONFIG = {
 
   // Supabase project (Settings → API in the Supabase dashboard). The anon key is safe to publish;
   // row-level security in supabase/schema.sql decides what it can do.
-  supabaseUrl: "",
-  supabaseAnonKey: "",
+  supabaseUrl: "https://nsclvenybxxlwwggtozm.supabase.co",
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zY2x2ZW55Ynh4bHd3Z2d0b3ptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5OTA1MzgsImV4cCI6MjEwNzU2NjUzOH0.EtqMGEAQXHdK0BC31jbnQ1XMSLDkT2kXR1T65pVbKT0",
 
   // Public address of this app, used inside QR codes. Leave empty to use the address it is opened from.
   // GitHub Pages address for this repository (see docs/GETTING-STARTED.md, step 3).
