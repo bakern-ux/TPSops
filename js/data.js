@@ -18,124 +18,115 @@
 
   const CATEGORIES = [
     {
-      id: "custodial", name: "Custodial", criteria: [
-        { id: "cus-floors", label: "Floors clean, free of debris and residue", dim: "appearance" },
-        { id: "cus-restrooms", label: "Restrooms cleaned and sanitized", dim: "service" },
-        { id: "cus-trash", label: "Trash and recycling emptied, liners replaced", dim: "service" },
-        { id: "cus-dust", label: "Horizontal surfaces, vents and ledges dusted", dim: "appearance" },
-        { id: "cus-glass", label: "Entry glass, doors and touchpoints clean", dim: "appearance" },
-        { id: "cus-wet", label: "Wet floors signed; chemicals stored and labeled", dim: "safety" },
-      ],
-    },
-    {
       id: "housekeeping", name: "Housekeeping", criteria: [
+        { id: "hk-floors", label: "Floors clean, free of debris and residue", dim: "appearance" },
+        { id: "hk-restrooms", label: "Restrooms cleaned and sanitized", dim: "service" },
         { id: "hk-supplies", label: "Soap, towels and tissue stocked", dim: "service" },
-        { id: "hk-rooms", label: "Classrooms and offices reset and orderly", dim: "service" },
-        { id: "hk-furniture", label: "Furniture clean and undamaged", dim: "condition" },
-        { id: "hk-stains", label: "Spills and stains addressed promptly", dim: "appearance" },
-        { id: "hk-common", label: "Lobbies and common areas tidy", dim: "appearance" },
+        { id: "hk-trash", label: "Trash and recycling emptied, liners replaced", dim: "service" },
+        { id: "hk-surfaces", label: "Surfaces, glass and touchpoints clean", dim: "appearance" },
+        { id: "hk-rooms", label: "Classrooms, offices and common areas orderly", dim: "condition" },
+        { id: "hk-wet", label: "Wet floors signed; chemicals stored and labeled", dim: "safety" },
         { id: "hk-egress", label: "Hallways and exits clear of obstructions", dim: "safety" },
       ],
     },
     {
-      id: "grounds", name: "Grounds", criteria: [
-        { id: "gr-walks", label: "Walkways clear, no trip hazards", dim: "safety" },
-        { id: "gr-litter", label: "Litter removed from grounds and lots", dim: "appearance" },
-        { id: "gr-fields", label: "Athletic fields and courts game-ready", dim: "condition" },
-        { id: "gr-parking", label: "Parking lots, striping and signage", dim: "condition" },
-        { id: "gr-lighting", label: "Exterior lighting working", dim: "safety" },
-        { id: "gr-response", label: "Requests handled on schedule", dim: "service" },
+      id: "maintenance", name: "Maintenance", criteria: [
+        { id: "mt-pm", label: "Preventive maintenance completed on schedule", dim: "service" },
+        { id: "mt-closeout", label: "Work orders closed with notes", dim: "service" },
+        { id: "mt-temps", label: "Spaces within temperature setpoint", dim: "service" },
+        { id: "mt-equipment", label: "HVAC equipment running; no leaks, noise or vibration", dim: "condition" },
+        { id: "mt-fixtures", label: "Lights, doors, plumbing and fixtures working", dim: "condition" },
+        { id: "mt-mechroom", label: "Equipment rooms clean; 36\" clearance; no combustibles stored", dim: "safety" },
+        { id: "mt-lifesafety", label: "Life-safety checks current (extinguishers, exit signs, eyewash)", dim: "safety" },
+        { id: "mt-finish", label: "Work areas left clean after repairs", dim: "appearance" },
       ],
     },
     {
       id: "landscaping", name: "Landscaping", criteria: [
         { id: "ls-turf", label: "Turf mowed and edged", dim: "appearance" },
         { id: "ls-beds", label: "Beds weeded and mulched", dim: "appearance" },
+        { id: "ls-litter", label: "Litter removed from grounds and lots", dim: "appearance" },
+        { id: "ls-walks", label: "Walkways and parking clear; no trip hazards", dim: "safety" },
         { id: "ls-prune", label: "Trees and shrubs pruned; sightlines clear", dim: "safety" },
-        { id: "ls-irrigation", label: "Irrigation working, no runoff onto walks", dim: "condition" },
-        { id: "ls-seasonal", label: "Seasonal plantings and color", dim: "appearance" },
+        { id: "ls-irrigation", label: "Irrigation working; no runoff onto walks", dim: "condition" },
+        { id: "ls-fields", label: "Fields and courts game-ready", dim: "condition" },
         { id: "ls-schedule", label: "Work done on the agreed schedule", dim: "service" },
-      ],
-    },
-    {
-      id: "hvac", name: "HVAC equipment rooms", criteria: [
-        { id: "hv-clear", label: "Room clean; 36\" clearance at panels and equipment", dim: "safety" },
-        { id: "hv-filters", label: "Filters current and change log posted", dim: "service" },
-        { id: "hv-leaks", label: "No leaks, unusual noise or vibration", dim: "condition" },
-        { id: "hv-labels", label: "Equipment labeled; lockout/tagout available", dim: "safety" },
-        { id: "hv-storage", label: "No combustibles or unrelated storage", dim: "safety" },
-        { id: "hv-temps", label: "Served spaces within temperature setpoint", dim: "service" },
-      ],
-    },
-    {
-      id: "pm", name: "Preventive maintenance", criteria: [
-        { id: "pm-ontime", label: "PM tasks completed on schedule", dim: "service" },
-        { id: "pm-closeout", label: "Work orders closed with notes and parts", dim: "service" },
-        { id: "pm-lifesafety", label: "Life-safety checks current (extinguishers, exit signs, eyewash)", dim: "safety" },
-        { id: "pm-assets", label: "Asset tags and records accurate", dim: "condition" },
-        { id: "pm-deferred", label: "Deferred items documented with a plan", dim: "condition" },
-        { id: "pm-finish", label: "Work areas left clean after repairs", dim: "appearance" },
       ],
     },
   ];
 
   // What a customer can pick on the QR feedback form, mapped to a service area.
   const FEEDBACK_TOPICS = [
-    { id: "custodial", label: "Cleanliness" },
-    { id: "housekeeping", label: "Restroom supplies / room setup" },
-    { id: "grounds", label: "Grounds, walkways, lighting" },
-    { id: "landscaping", label: "Landscaping" },
-    { id: "hvac", label: "Temperature / air" },
-    { id: "pm", label: "Something broken" },
+    { id: "housekeeping", label: "Cleanliness or supplies" },
+    { id: "maintenance", label: "Something broken, too hot or too cold" },
+    { id: "landscaping", label: "Grounds, fields or landscaping" },
   ];
 
+  // Campus locations. The same list is loaded into the live database by supabase/schema.sql.
+  const ALL = ["housekeeping", "maintenance", "landscaping"];
+  const OUTDOOR = ["maintenance", "landscaping"];
+  const LOCATIONS = [
+    ["tennis-courts", "Tennis Courts", "Athletics & Fields", OUTDOOR],
+    ["back-field", "Back Field", "Athletics & Fields", OUTDOOR],
+    ["hubbard-field", "Hubbard Field", "Athletics & Fields", OUTDOOR],
+    ["practice-field", "Practice Field", "Athletics & Fields", OUTDOOR],
+    ["overflow-parking", "Overflow Parking", "Parking", OUTDOOR],
+    ["softball-field", "Softball Field", "Athletics & Fields", OUTDOOR],
+    ["baseball-field", "Baseball Field", "Athletics & Fields", OUTDOOR],
+    ["pool", "Pool", "Athletics & Fields", ALL],
+    ["basketball-court", "Basketball Court", "Athletics & Fields", ALL],
+    ["brokaw", "Brokaw", "Buildings", ALL],
+    ["ellis", "Ellis", "Buildings", ALL],
+    ["dining", "Dining", "Buildings", ALL],
+    ["stuart", "Stuart", "Buildings", ALL],
+    ["humanities", "Humanities", "Buildings", ALL],
+    ["holloway", "Holloway", "Buildings", ALL],
+    ["src", "SRC", "Buildings", ALL],
+    ["dac", "DAC", "Buildings", ALL],
+    ["rac", "RAC", "Buildings", ALL],
+    ["mac", "MAC", "Buildings", ALL],
+    ["maintenance", "Maintenance", "Buildings", ALL],
+    ["sankar", "Sankar", "Buildings", ALL],
+    ["trinity-house", "Trinity House", "Buildings", ALL],
+    ["west-campus", "West Campus", "Campus", ALL],
+    ["kiosk", "Kiosk", "Campus", ALL],
+  ].map(([id, name, building, categories]) => ({ id, name, building, categories: [...categories], active: true }));
+
   // ---------- Demo data (DEMO mode only; never written to the live database) ----------
-  const DEMO_LOCATIONS = [
-    { id: "us-main", name: "Upper School Main Hall", building: "Upper School", categories: ["custodial", "housekeeping", "hvac", "pm"] },
-    { id: "ms-wing", name: "Middle School Wing", building: "Middle School", categories: ["custodial", "housekeeping", "pm"] },
-    { id: "library", name: "Library & Learning Commons", building: "Library", categories: ["custodial", "housekeeping", "pm"] },
-    { id: "dining", name: "Dining Hall", building: "Student Center", categories: ["custodial", "housekeeping", "pm"] },
-    { id: "gym", name: "Gymnasium & Locker Rooms", building: "Athletics", categories: ["custodial", "housekeeping", "hvac", "pm"] },
-    { id: "science", name: "Science Building", building: "Science", categories: ["custodial", "housekeeping", "hvac", "pm"] },
-    { id: "arts", name: "Performing Arts Center", building: "Arts", categories: ["custodial", "housekeeping", "pm"] },
-    { id: "mech-a", name: "Central Plant Mechanical Room", building: "Central Plant", categories: ["hvac", "pm"] },
-    { id: "fields", name: "Athletic Fields & Track", building: "Grounds", categories: ["grounds", "landscaping"] },
-    { id: "campus-core", name: "Campus Quad & Entrances", building: "Grounds", categories: ["grounds", "landscaping"] },
-    { id: "lot-north", name: "North Parking Lot", building: "Grounds", categories: ["grounds", "landscaping"] },
-  ].map((l) => ({ ...l, active: true }));
+  const DEMO_LOCATIONS = LOCATIONS;
 
   const DEMO_AUDITORS = {
     customer: ["Facilities Director (demo)", "Asst. Head of School (demo)", "Athletics Director (demo)", "Business Office (demo)"],
-    vendor: ["Account Manager (demo)", "Custodial Supervisor (demo)", "Grounds Lead (demo)", "HVAC Technician (demo)"],
+    vendor: ["Account Manager (demo)", "Housekeeping Supervisor (demo)", "Grounds Lead (demo)", "Maintenance Technician (demo)"],
   };
 
   const DEMO_FEEDBACK = [
-    ["custodial", 2, "Trash overflowing by the vending machines after lunch.", false],
+    ["housekeeping", 2, "Trash overflowing by the vending machines after lunch.", false],
     ["housekeeping", 1, "No paper towels in the 2nd floor boys' restroom, again.", false],
-    ["custodial", 1, "Spill at the bottom of the east stairwell. Really slippery, someone almost fell.", true],
-    ["hvac", 2, "Room 214 is 79°F during first period.", false],
-    ["grounds", 2, "Light out on the path from the north lot. Very dark after practice.", true],
+    ["housekeeping", 1, "Spill at the bottom of the east stairwell. Really slippery, someone almost fell.", true],
+    ["maintenance", 2, "Classroom is 79°F during first period.", false],
+    ["landscaping", 2, "Light out on the path from the parking lot. Very dark after practice.", true],
     ["landscaping", 2, "Sprinklers spraying across the sidewalk at drop-off.", false],
-    ["pm", 2, "Hand dryer in the gym locker room is not working.", false],
-    ["custodial", 5, "Lobby looked great for open house. Thank you!", false],
-    ["housekeeping", 3, "Soap dispenser near the cafeteria is low.", false],
-    ["pm", 1, "Exit sign over the back door of the black box theater is dark.", true],
-    ["grounds", 1, "Raised sidewalk slab near the quad. Tripped on it.", true],
-    ["hvac", 3, "A little warm in the library reading room in the afternoon.", false],
-    ["custodial", 4, "Restrooms much better this week.", false],
+    ["maintenance", 2, "Hand dryer in the locker room is not working.", false],
+    ["housekeeping", 5, "Lobby looked great for open house. Thank you!", false],
+    ["housekeeping", 3, "Soap dispenser near the entrance is low.", false],
+    ["maintenance", 1, "Exit sign over the back door is dark.", true],
+    ["landscaping", 1, "Raised sidewalk slab near the entrance. Tripped on it.", true],
+    ["maintenance", 3, "A little warm in the afternoon.", false],
+    ["housekeeping", 4, "Restrooms much better this week.", false],
     ["landscaping", 4, "Front entrance flowers look nice.", false],
-    ["housekeeping", 2, "Desks in the science lab not wiped down after Friday.", false],
-    ["pm", 2, "Ceiling tile stained above the stage left door. Possible leak.", false],
-    ["custodial", 2, "Gym bleachers still sticky from Friday's game.", false],
-    ["grounds", 3, "Some litter behind the bleachers.", false],
-    ["hvac", 1, "Strong burning smell from the vent in room 108.", true],
-    ["housekeeping", 5, "Dining hall staff and cleaning crew are doing a great job.", false],
-    ["custodial", 2, "Glass doors at main entrance covered in fingerprints.", false],
-    ["pm", 3, "Water fountain pressure is low on 1st floor.", false],
+    ["housekeeping", 2, "Desks not wiped down after Friday.", false],
+    ["maintenance", 2, "Ceiling tile stained above the door. Possible leak.", false],
+    ["housekeeping", 2, "Bleachers still sticky from Friday's game.", false],
+    ["landscaping", 3, "Some litter behind the bleachers.", false],
+    ["maintenance", 1, "Strong burning smell from a vent.", true],
+    ["housekeeping", 5, "Cleaning crew is doing a great job.", false],
+    ["housekeeping", 2, "Glass doors at main entrance covered in fingerprints.", false],
+    ["maintenance", 3, "Water fountain pressure is low.", false],
     ["landscaping", 2, "Overgrown shrubs blocking the view at the crosswalk.", true],
-    ["custodial", 3, "Classroom floors need a deeper clean.", false],
-    ["housekeeping", 1, "Girls' restroom out of toilet paper during an event.", false],
-    ["grounds", 4, "Fields looked ready for Saturday's game.", false],
+    ["housekeeping", 3, "Floors need a deeper clean.", false],
+    ["housekeeping", 1, "Restroom out of toilet paper during an event.", false],
+    ["landscaping", 4, "Field looked ready for Saturday's game.", false],
   ];
 
   function mulberry32(a) {
@@ -161,7 +152,7 @@
     const rand = mulberry32(20261014);
     const audits = [];
     const issues = [];
-    const vendorBias = { custodial: 0.3, housekeeping: 0.25, grounds: 0.35, landscaping: 0.2, hvac: 0.7, pm: 0.75 };
+    const vendorBias = { housekeeping: 0.3, maintenance: 0.7, landscaping: 0.25 };
     const base = {};
     DEMO_LOCATIONS.forEach((l) => l.categories.forEach((c) => { base[l.id + "|" + c] = 2.9 + rand() * 1.3; }));
 
@@ -252,5 +243,5 @@
     return { locations: DEMO_LOCATIONS.map((l) => ({ ...l })), audits, issues };
   }
 
-  window.TPS_DATA = { DIMENSIONS, SCALE, CATEGORIES, FEEDBACK_TOPICS, buildDemo };
+  window.TPS_DATA = { DIMENSIONS, SCALE, CATEGORIES, FEEDBACK_TOPICS, LOCATIONS, buildDemo };
 })();

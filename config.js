@@ -11,8 +11,8 @@ window.TPS_CONFIG = {
   supabaseAnonKey: "",
 
   // Public address of this app, used inside QR codes. Leave empty to use the address it is opened from.
-  // Example: "https://bakern-ux.github.io/tpsops/"
-  publicUrl: "",
+  // GitHub Pages address for this repository (see docs/GETTING-STARTED.md, step 3).
+  publicUrl: "https://bakern-ux.github.io/TPSops/",
 
   // Rating scale is 1–5. Scores at or above `targetScore` meet the service standard;
   // below `minimumScore` is unacceptable and needs a corrective action.

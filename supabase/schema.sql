@@ -14,7 +14,7 @@ create table if not exists public.locations (
   id          text primary key,                       -- short slug used in QR links, e.g. 'gym'
   name        text not null,
   building    text,
-  categories  text[] not null default '{}',           -- custodial, housekeeping, grounds, landscaping, hvac, pm
+  categories  text[] not null default '{}',           -- housekeeping, maintenance, landscaping
   active      boolean not null default true,
   created_at  timestamptz not null default now()
 );
@@ -27,7 +27,7 @@ create table if not exists public.audits (
   side        text not null check (side in ('customer', 'vendor')),
   auditor     text not null,
   location_id text not null references public.locations(id),
-  category    text not null check (category in ('custodial','housekeeping','grounds','landscaping','hvac','pm')),
+  category    text not null check (category in ('housekeeping','maintenance','landscaping')),
   scores      jsonb not null,                          -- { "criterion-id": 1..5 | null (N/A) }
   comments    text
 );
@@ -37,7 +37,7 @@ create table if not exists public.issues (
   id                   uuid primary key default gen_random_uuid(),
   created_at           timestamptz not null default now(),
   location_id          text not null references public.locations(id),
-  category             text not null check (category in ('custodial','housekeeping','grounds','landscaping','hvac','pm')),
+  category             text not null check (category in ('housekeeping','maintenance','landscaping')),
   rating               smallint check (rating between 1 and 5),
   comment              text check (char_length(comment) <= 2000),
   submitter            text check (char_length(submitter) <= 120),
@@ -86,14 +86,31 @@ drop policy if exists "staff manage issues" on public.issues;
 create policy "staff manage issues" on public.issues
   for all to authenticated using (true) with check (true);
 
--- Starter locations. Edit freely here or later on the Setup screen.
+-- Campus locations (same list as js/data.js). Edit later on the Setup screen.
+-- Each id is part of that location's QR code link, so don't change ids after printing codes.
 insert into public.locations (id, name, building, categories) values
-  ('us-main',     'Upper School Main Hall',        'Upper School',  '{custodial,housekeeping,hvac,pm}'),
-  ('ms-wing',     'Middle School Wing',            'Middle School', '{custodial,housekeeping,pm}'),
-  ('library',     'Library & Learning Commons',    'Library',       '{custodial,housekeeping,pm}'),
-  ('dining',      'Dining Hall',                   'Student Center','{custodial,housekeeping,pm}'),
-  ('gym',         'Gymnasium & Locker Rooms',      'Athletics',     '{custodial,housekeeping,hvac,pm}'),
-  ('mech-a',      'Central Plant Mechanical Room', 'Central Plant', '{hvac,pm}'),
-  ('fields',      'Athletic Fields & Track',       'Grounds',       '{grounds,landscaping}'),
-  ('campus-core', 'Campus Quad & Entrances',       'Grounds',       '{grounds,landscaping}')
+  ('tennis-courts',    'Tennis Courts',  'Athletics & Fields', '{maintenance,landscaping}'),
+  ('back-field',       'Back Field',     'Athletics & Fields', '{maintenance,landscaping}'),
+  ('hubbard-field',    'Hubbard Field',  'Athletics & Fields', '{maintenance,landscaping}'),
+  ('practice-field',   'Practice Field', 'Athletics & Fields', '{maintenance,landscaping}'),
+  ('overflow-parking', 'Overflow Parking','Parking',            '{maintenance,landscaping}'),
+  ('softball-field',   'Softball Field', 'Athletics & Fields', '{maintenance,landscaping}'),
+  ('baseball-field',   'Baseball Field', 'Athletics & Fields', '{maintenance,landscaping}'),
+  ('pool',             'Pool',           'Athletics & Fields', '{housekeeping,maintenance,landscaping}'),
+  ('basketball-court', 'Basketball Court','Athletics & Fields', '{housekeeping,maintenance,landscaping}'),
+  ('brokaw',           'Brokaw',         'Buildings',          '{housekeeping,maintenance,landscaping}'),
+  ('ellis',            'Ellis',          'Buildings',          '{housekeeping,maintenance,landscaping}'),
+  ('dining',           'Dining',         'Buildings',          '{housekeeping,maintenance,landscaping}'),
+  ('stuart',           'Stuart',         'Buildings',          '{housekeeping,maintenance,landscaping}'),
+  ('humanities',       'Humanities',     'Buildings',          '{housekeeping,maintenance,landscaping}'),
+  ('holloway',         'Holloway',       'Buildings',          '{housekeeping,maintenance,landscaping}'),
+  ('src',              'SRC',            'Buildings',          '{housekeeping,maintenance,landscaping}'),
+  ('dac',              'DAC',            'Buildings',          '{housekeeping,maintenance,landscaping}'),
+  ('rac',              'RAC',            'Buildings',          '{housekeeping,maintenance,landscaping}'),
+  ('mac',              'MAC',            'Buildings',          '{housekeeping,maintenance,landscaping}'),
+  ('maintenance',      'Maintenance',    'Buildings',          '{housekeeping,maintenance,landscaping}'),
+  ('sankar',           'Sankar',         'Buildings',          '{housekeeping,maintenance,landscaping}'),
+  ('trinity-house',    'Trinity House',  'Buildings',          '{housekeeping,maintenance,landscaping}'),
+  ('west-campus',      'West Campus',    'Campus',             '{housekeeping,maintenance,landscaping}'),
+  ('kiosk',            'Kiosk',          'Campus',             '{housekeeping,maintenance,landscaping}')
 on conflict (id) do nothing;

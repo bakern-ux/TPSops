@@ -1,7 +1,7 @@
 // Data layer. Both stores expose the same async API so the app does not care which one is active.
 (function () {
   const C = window.TPS_CONFIG;
-  const KEY = "tpsops.demo.v1";
+  const KEY = "tpsops.demo.v2";
 
   function newId() {
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID();

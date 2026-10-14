@@ -4,26 +4,29 @@ A web app for weekly facility audits that puts **customer and vendor ratings sid
 **QR code feedback** from anyone on campus, and gives the operations team one **dashboard** for usage,
 service, safety, resolution and quality standards.
 
-It covers six service areas: custodial, housekeeping, grounds, landscaping, HVAC equipment rooms
-and preventive maintenance.
+It covers three service areas (**Housekeeping, Maintenance, Landscaping**) across 24 campus locations,
+from Tennis Courts and Hubbard Field to Brokaw, Ellis, the SRC and West Campus.
+
+> **New to GitHub?** Start with **[docs/GETTING-STARTED.md](docs/GETTING-STARTED.md)**, a step-by-step guide
+> to putting the app online, connecting the database and printing the QR codes.
 
 ## What it does
 
 | Screen | Who uses it | Purpose |
 |---|---|---|
 | **Dashboard** | Operations team | Customer vs vendor scores, the alignment gap, weekly trend, the four scoring dimensions, audit and QR activity, a location × service-area scorecard, the largest gaps, open safety issues, time to resolve |
-| **New audit** | Customer and vendor auditors | Pick a side (customer or vendor), location and service area, then score 6 criteria from 1 to 5 or N/A. Safety items scored 1–2 open a safety issue automatically. |
+| **New audit** | Customer and vendor auditors | Pick a side (customer or vendor), location and service area, then score 8 criteria from 1 to 5 or N/A. Safety items scored 1–2 open a safety issue automatically. |
 | **Audit log** | Everyone on staff | Every audit with criterion detail; CSV export |
 | **Issues** | Ops team, vendor | QR feedback and audit-flagged items. Set status, priority, owner and resolution. Export to Brightly. |
-| **QR codes** | Ops team | One printable QR card per location |
+| **QR codes** | Ops team | One printable QR card per location. A ready-to-print PDF is in `docs/qr-codes.pdf`. |
 | **Setup** | Ops team | Locations and which service areas apply to each; data export |
-| **Feedback form** (`#report.<location>`) | Students, staff, parents, visitors | The page a QR code opens: topic, 1–5 rating, comment, safety flag, optional name and contact. No login needed. |
+| **Feedback form** (`#report.<location>`) | Students, staff, parents, visitors | The page a QR code opens: topic, 1–5 rating, comment, safety flag, an optional name and email for follow-up. No login needed. |
 
 ### Scoring model
 
 * **Scale (1–5):** 1 Unacceptable · 2 Needs improvement · 3 Meets minimum · 4 Meets standard · 5 Exemplary.
 * **Standard:** 4.0, **minimum:** 3.0. Both are set in `config.js`.
-* Each service area has 6 criteria, and each criterion rolls up into one **dimension**:
+* Each service area has 8 criteria, and each criterion rolls up into one **dimension**:
   *Service quality, Safety, Condition, Appearance*. Edit the criteria in `js/data.js`.
 * **Alignment gap** = vendor average − customer average for the same filter. The gap is *Aligned* below ±0.25,
   *Watch* from 0.25 to 0.5, and *Misaligned* at 0.5 or more. Misaligned cells get a red **!** on the scorecard.
@@ -43,6 +46,8 @@ python3 -m http.server 8000      # or any static file server
 
 ## Going live
 
+Step-by-step, beginner-friendly instructions: **[docs/GETTING-STARTED.md](docs/GETTING-STARTED.md)**. The summary is below.
+
 Live mode needs two things: a shared database, so auditors, phones and the ops team all see the same data,
 and a public web address, so QR codes work on campus.
 
@@ -60,7 +65,7 @@ and a public web address, so QR codes work on campus.
 ```js
 supabaseUrl: "https://YOUR-PROJECT.supabase.co",
 supabaseAnonKey: "eyJ...",
-publicUrl: "https://bakern-ux.github.io/tpsops/",
+publicUrl: "https://bakern-ux.github.io/TPSops/",
 ```
 
 The anon key is meant to be public. The row-level security rules in `schema.sql` limit it to reading
@@ -68,9 +73,9 @@ active locations and *adding* QR feedback. It cannot read audits, read feedback 
 
 ### 2. Hosting: GitHub Pages
 
-Go to **Repository → Settings → Pages**, set Source to *Deploy from a branch*, and pick the branch and `/ (root)`.
-The app will be at `https://bakern-ux.github.io/tpsops/`. Put that address in `publicUrl`, then print the
-QR cards from the **QR codes** screen. Any static host works, including Netlify, Cloudflare Pages
+Go to **Repository → Settings → Pages**, set Source to *Deploy from a branch*, and pick `main` and `/ (root)`. On a free GitHub plan, Pages requires the repository to be public.
+The app will be at `https://bakern-ux.github.io/TPSops/`, which is already set as `publicUrl` in `config.js`,
+so the QR codes in `docs/qr-codes.pdf` point there. Any static host works, including Netlify, Cloudflare Pages
 and your school web server.
 
 > A GitHub Pages site is public even when the repository is private. That is fine here because data
@@ -98,11 +103,13 @@ in this front-end code. See `docs/brightly.md`.
 index.html            App shell
 styles.css            All styling (light and dark themes, print layout for QR cards)
 config.js             Organization name, Supabase keys, thresholds, Brightly defaults
-js/data.js            Service areas, criteria, dimensions, sample data generator
+js/data.js            Service areas, criteria, dimensions, the 24 locations, sample data generator
 js/store.js           Data layer: demo (localStorage) and live (Supabase), same API
 js/app.js             Screens, dashboard calculations, charts, QR, exports
 supabase/schema.sql   Tables and row-level security
 vendor/               Chart.js 4.4.1, qrcode-generator 1.4.4, supabase-js 2.45.4 (MIT), bundled so nothing loads from a CDN
+docs/GETTING-STARTED.md  Beginner's guide to going live
+docs/qr-codes.pdf     Printable QR cards for all 24 locations (4 per page)
 docs/brightly.md      Notes on Brightly integration
 ```
 

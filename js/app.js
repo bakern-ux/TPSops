@@ -272,7 +272,7 @@
     const cats = CATEGORIES.filter((c) => prefs.category === "all" || c.id === prefs.category);
     charts.push(new Chart($("#chCat"), {
       type: "bar",
-      data: { labels: cats.map((c) => c.name.replace("HVAC equipment rooms", "HVAC rooms").replace("Preventive maintenance", "Prev. maint.")),
+      data: { labels: cats.map((c) => c.name),
         datasets: [bar("Customer", cats.map((c) => sideAvg(audits.filter((a) => a.category === c.id), "customer")), cu),
                    bar("Vendor", cats.map((c) => sideAvg(audits.filter((a) => a.category === c.id), "vendor")), ve)] },
       options: { maintainAspectRatio: false, scales: { y: scoreAxis, x: catAxis }, plugins: { legend, tooltip: tip } },
@@ -508,12 +508,13 @@
           <span class="pill ${statusPill}">${STATUS[i.status] || i.status}</span>
           ${i.safety ? `<span class="pill safety">Safety</span>` : ""}
           <span class="pill neutral">${i.source === "qr" ? "QR feedback" : "Audit"}</span>
+          ${i.contact ? `<span class="pill warn">Follow up: ${esc(i.contact)}</span>` : ""}
           ${i.brightly_exported_at ? `<span class="pill neutral">Sent to Brightly ${shortDate(new Date(i.brightly_exported_at))}</span>` : ""}
           ${stars(i.rating)}
         </div>
         <div style="margin-top:6px"><b>${esc(locName(i.location_id))}</b> · ${esc(CAT[i.category]?.name || i.category)}</div>
         <p class="comment">${esc(i.comment) || "<span style='color:var(--muted)'>No comment</span>"}</p>
-        <div class="meta">${dateTime(i.created_at)}${i.submitter ? " · " + esc(i.submitter) : ""}${i.contact ? " · " + esc(i.contact) : ""} · ${resolvedIn != null ? `resolved in ${fmt(resolvedIn, 1)} days` : `${age < 1 ? Math.max(1, Math.round(age * 24)) + " hours" : Math.round(age) + " days"} old`}</div>
+        <div class="meta">${dateTime(i.created_at)}${i.submitter ? " · " + esc(i.submitter) : ""} · ${resolvedIn != null ? `resolved in ${fmt(resolvedIn, 1)} days` : `${age < 1 ? Math.max(1, Math.round(age * 24)) + " hours" : Math.round(age) + " days"} old`}</div>
         <div class="controls">
           <label class="field">Status<select class="iStat">${Object.entries(STATUS).map(([v, l]) => opt(v, l, i.status)).join("")}</select></label>
           <label class="field">Priority<select class="iPri">${opt("high", "High", i.priority)}${opt("medium", "Medium", i.priority)}${opt("low", "Low", i.priority)}</select></label>
@@ -584,7 +585,7 @@
         <p class="sub">Each location lists the service areas audited there. Audits and QR codes use these lists.</p></div></section>
       <section class="panel">
         <div class="panel-head"><h2>Locations</h2><p>${data.locations.length} total</p></div>
-        <div class="table-wrap"><table><thead><tr><th>Name</th><th>Building</th>${CATEGORIES.map((c) => `<th style="text-align:center">${esc(c.name.replace("HVAC equipment rooms", "HVAC").replace("Preventive maintenance", "PM"))}</th>`).join("")}<th>Active</th><th></th></tr></thead>
+        <div class="table-wrap"><table><thead><tr><th>Name</th><th>Building</th>${CATEGORIES.map((c) => `<th style="text-align:center">${esc(c.name)}</th>`).join("")}<th>Active</th><th></th></tr></thead>
         <tbody>${data.locations.map((l) => `<tr data-id="${esc(l.id)}">
           <td><input type="text" class="sName" value="${esc(l.name)}" aria-label="Name"></td>
           <td><input type="text" class="sBld" value="${esc(l.building || "")}" aria-label="Building" style="width:9em"></td>
@@ -620,7 +621,7 @@
       const name = $("#nName").value.trim(); if (!name) return;
       let id = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "loc";
       while (data.locations.some((l) => l.id === id)) id += "-2";
-      try { await store.saveLocation({ id, name, building: $("#nBld").value.trim(), categories: ["custodial", "housekeeping", "pm"], active: true }); await refresh(); toast("Location added. Tick its service areas, then Save."); render(); }
+      try { await store.saveLocation({ id, name, building: $("#nBld").value.trim(), categories: CATEGORIES.map((c) => c.id), active: true }); await refresh(); toast("Location added. Tick its service areas, then Save."); render(); }
       catch (ex) { toast("Could not add: " + ex.message); }
     };
     $("#dJson").onclick = () => downloadText(`tps-ops-export-${isoDay(new Date())}.json`, JSON.stringify(data, null, 2), "application/json");
@@ -678,10 +679,13 @@
             <div class="rate">${faces.map((f, k) => `<input type="radio" name="rating" id="r${k + 1}" value="${k + 1}"><label for="r${k + 1}"><b>${k + 1}</b><span>${f}</span></label>`).join("")}</div></fieldset>
           <label class="field" for="fbComment">Comment<textarea id="fbComment" maxlength="1000" placeholder="What did you notice? Be as specific as you can, e.g. which restroom or room number."></textarea></label>
           <label class="safety-toggle" for="fbSafety"><input type="checkbox" id="fbSafety"><span><b>This is a safety concern</b><br><span style="font-size:.85rem;color:var(--muted)">Spills, trip hazards, broken lights, exposed wiring, blocked exits. For emergencies call campus security or 911 first.</span></span></label>
-          <div class="form-grid">
-            <label class="field" for="fbName">Your name (optional)<input type="text" id="fbName" maxlength="80" autocomplete="name"></label>
-            <label class="field" for="fbContact">Email or phone for follow-up (optional)<input type="text" id="fbContact" maxlength="120" autocomplete="email"></label>
-          </div>
+          <fieldset class="followup"><legend>Would you like us to follow up? <span>(optional)</span></legend>
+            <p>Leave your name and email and the facilities team will let you know when it's taken care of. Leave them blank to stay anonymous.</p>
+            <div class="form-grid">
+              <label class="field" for="fbName">Name<input type="text" id="fbName" maxlength="80" autocomplete="name"></label>
+              <label class="field" for="fbContact">Email<input type="email" id="fbContact" maxlength="120" autocomplete="email" inputmode="email" placeholder="name@trinityprep.org"></label>
+            </div>
+          </fieldset>
           <p class="notice bad" id="fbErr" hidden></p>
           <button class="btn primary big-btn" type="submit">Send feedback</button>
         </form>
@@ -698,9 +702,11 @@
       if (!location_id) problems.push("Choose a location.");
       if (!rating) problems.push("Pick a rating from 1 to 5.");
       if ((safety || rating <= 2) && !comment) problems.push("Add a short comment so the team knows what to fix.");
+      const email = $("#fbContact").value.trim();
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) problems.push("Check the email address, or leave it blank.");
       if (problems.length) { err.textContent = problems.join(" "); err.hidden = false; return; }
       const btn = $("#fbForm button[type=submit]"); btn.disabled = true; btn.textContent = "Sending…";
-      const issue = { location_id, category, rating, comment, safety, submitter: $("#fbName").value.trim(), contact: $("#fbContact").value.trim(), source: "qr",
+      const issue = { location_id, category, rating, comment, safety, submitter: $("#fbName").value.trim(), contact: email, source: "qr",
         status: rating <= 3 || safety ? "open" : "noted", priority: null, assigned_to: null, resolution: null, resolved_at: null, brightly_exported_at: null, audit_id: null };
       issue.priority = priorityFor(issue);
       try {
@@ -708,6 +714,7 @@
         loaded = false; // staff views in this browser reload on next visit
         view.innerHTML = `<div class="public-wrap"><div class="panel thanks"><span class="brand-mark" style="margin:0 auto" aria-hidden="true"></span><h1>Thank you</h1>
           <p>${issue.status === "open" ? "Your report went to the facilities team." + (safety ? " Safety reports are reviewed first." : "") : "Your feedback helps us keep campus at its best."}</p>
+          ${email ? `<p>We'll follow up at <b>${esc(email)}</b>.</p>` : ""}
           <a class="btn" href="#report${loc ? "." + esc(loc.id) : ""}" id="again">Send another</a></div></div>`;
         $("#again").onclick = (ev) => { ev.preventDefault(); renderReport(view, locId); };
       } catch (ex) { err.textContent = "Could not send. Check your connection and try again. (" + ex.message + ")"; err.hidden = false; btn.disabled = false; btn.textContent = "Send feedback"; }
