@@ -605,7 +605,12 @@
           <div class="toolbar"><button class="btn" id="dReset" type="button">Reload sample data</button><button class="btn" id="dClear" type="button">Clear audits and issues</button><button class="btn" id="dJson" type="button">Export everything (JSON)</button></div>
           <p class="notice" id="dConfirm" hidden></p>`
         : `<p style="margin:0">Connected to the shared database. Signed-in staff can enter audits and manage issues; anyone with a QR link can submit feedback.</p>
-          <div class="toolbar"><button class="btn" id="dJson" type="button">Export everything (JSON)</button><button class="btn" id="dOut" type="button">Sign out</button></div>`}
+          <div class="toolbar"><button class="btn" id="dJson" type="button">Export everything (JSON)</button><button class="btn" id="dOut" type="button">Sign out</button></div>
+          <form id="pwForm" class="toolbar" style="align-items:flex-end">
+            <label class="field" for="pwNew">Change your password<input type="password" id="pwNew" minlength="8" autocomplete="new-password" placeholder="At least 8 characters"></label>
+            <label class="field" for="pwNew2">Type it again<input type="password" id="pwNew2" minlength="8" autocomplete="new-password"></label>
+            <button class="btn" type="submit">Save password</button>
+          </form>`}
         <p style="margin:0;color:var(--muted);font-size:.85rem">Standard ${C.targetScore.toFixed(1)} · minimum ${C.minimumScore.toFixed(1)} · aligned within ±${C.alignedGap} · response targets ${C.slaDays.safety} day (safety) / ${C.slaDays.standard} days. Change these in config.js.</p>
       </section>`;
 
@@ -626,6 +631,14 @@
     };
     $("#dJson").onclick = () => downloadText(`tps-ops-export-${isoDay(new Date())}.json`, JSON.stringify(data, null, 2), "application/json");
     if ($("#dOut")) $("#dOut").onclick = async () => { await store.signOut(); render(); };
+    if ($("#pwForm")) $("#pwForm").onsubmit = async (e) => {
+      e.preventDefault();
+      const a = $("#pwNew").value, b = $("#pwNew2").value;
+      if (a.length < 8) return toast("Use at least 8 characters");
+      if (a !== b) return toast("The two passwords don't match");
+      try { await store.changePassword(a); $("#pwForm").reset(); toast("Password changed"); }
+      catch (ex) { toast("Could not change password: " + ex.message); }
+    };
     // Two-step confirm, since a destructive action deserves one.
     const confirmThen = (msg, fn) => {
       const box = $("#dConfirm"); box.hidden = false;

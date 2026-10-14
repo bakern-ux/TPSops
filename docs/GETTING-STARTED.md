@@ -89,8 +89,17 @@ Only people you invite should be able to enter audits or see the dashboard. Anyo
 3. Click **URL Configuration**:
    * **Site URL:** `https://bakern-ux.github.io/TPSops/`
    * Under **Redirect URLs**, click **Add URL**, enter the same address and save.
-4. Click **Users** → **Add user** → **Send invitation**. Enter one person's email. Repeat for each customer auditor,
-   vendor auditor and operations team member. Each person gets an email with a link that signs them in.
+4. Add each person (customer auditors, vendor auditors and the operations team) with a password:
+   click **Users** → **Add user** → **Create new user**. Enter their email and a temporary password, and make sure
+   **Auto Confirm User** is checked. Click **Create user**. This sends no email.
+   Give each person their temporary password. They sign in at the app with their email and password,
+   then change it under **Setup → Change your password**.
+
+   > Why not **Send invitation**? Supabase's built-in email service only sends a few emails per hour.
+   > On free plans it may also only deliver to members of your Supabase team, so invites to other staff
+   > can fail with "email rate limit exceeded". To use email invites and sign-in links for everyone, connect
+   > your own email service under **Authentication → Emails → SMTP Settings**. Your school's Google Workspace
+   > or Microsoft 365 admin can provide these settings.
 
 ### 4d. Copy the two connection values
 1. Click the **Connect** button at the top of the Supabase project page.
@@ -125,8 +134,8 @@ step 4b control what each person can do. **Do not** share the *service_role* key
 
 ## Step 6: Sign in and test it
 
-1. On the sign-in screen, type your email, leave the password blank and click **Sign in**.
-   You'll get an email with a sign-in link. (You must have invited yourself in step 4c.)
+1. On the sign-in screen, type your email and password and click **Sign in**. (You must have added yourself in step 4c.)
+   If you leave the password blank, Supabase emails you a sign-in link instead, which counts toward its email limit.
 2. Click **New audit** and submit a quick test audit. It should appear on **Dashboard** and **Audit log**.
 3. On your phone, scan a QR code from `docs/qr-codes.pdf` (or from the **QR codes** screen). Submit a test with your
    name and email. It should appear on the **Issues** screen within a few seconds. (Refresh the page if needed.)
@@ -161,6 +170,7 @@ step 4b control what each person can do. **Do not** share the *service_role* key
 |---|---|
 | "404 There isn't a GitHub Pages site here" | Wait 3 minutes and refresh. Check steps 2 and 3. The address is case-sensitive: `TPSops`. |
 | The site still shows **Demo mode** after step 5 | Wait 2 minutes, then hard-refresh (Ctrl+Shift+R, or Cmd+Shift+R on a Mac). Check that `config.js` was saved with both values inside quotation marks. |
-| "Sign-in failed" or no email arrives | Check that the person was invited (step 4c) and look in their spam folder. Supabase's free email service sends only a few emails per hour, so wait and try again. |
+| "Sign-in failed" | Check that the person was added in step 4c with **Auto Confirm User** checked and is typing the right password. To reset it: Supabase → **Authentication → Users**, click the person, then use the option to update or reset their password. |
+| "Email rate limit exceeded" | Supabase's built-in email service hit its hourly limit. Add people with a password instead (step 4c), or wait an hour. |
 | The QR form says "Could not send" | Check that step 4b succeeded (Table Editor shows 24 locations) and that the anon key in `config.js` is complete. |
 | A phone shows an old version | Close the browser tab and scan again. |

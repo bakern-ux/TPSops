@@ -27,6 +27,7 @@
       async session() { return { user: { email: "demo" } }; },
       async signIn() { return {}; },
       async signOut() {},
+      async changePassword() {},
       async loadAll() { const d = load(); return { locations: [...d.locations], audits: [...d.audits], issues: [...d.issues] }; },
       async publicLocations() { return load().locations.filter((l) => l.active); },
       async addAudit(a) { const row = { id: newId(), created_at: new Date().toISOString(), ...a }; load().audits.push(row); write(); return row; },
@@ -67,6 +68,7 @@
         return must(await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: redirect, shouldCreateUser: false } }));
       },
       async signOut() { await sb.auth.signOut(); },
+      async changePassword(password) { must(await sb.auth.updateUser({ password })); },
       async loadAll() {
         const [locations, audits, issues] = await Promise.all([all("locations", "name"), all("audits", "audit_date"), all("issues", "created_at")]);
         return { locations, audits, issues };
