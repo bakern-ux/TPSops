@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>TPS Ops Facility Audits</title>
+  <meta name="description" content="Campus facility audits: customer and vendor ratings for custodial, housekeeping, grounds, landscaping, HVAC and preventive maintenance, plus QR feedback and an operations dashboard.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar" id="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#dashboard">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-text"><strong id="brandName">TPS Ops</strong><span id="orgName"></span></span>
+      </a>
+      <nav class="tabs" id="tabs" aria-label="Sections">
+        <a href="#dashboard" data-route="dashboard">Dashboard</a>
+        <a href="#audit" data-route="audit">New audit</a>
+        <a href="#audits" data-route="audits">Audit log</a>
+        <a href="#issues" data-route="issues">Issues</a>
+        <a href="#qr" data-route="qr">QR codes</a>
+        <a href="#setup" data-route="setup">Setup</a>
+      </nav>
+    </div>
+  </header>
+  <div class="mode-banner" id="modeBanner" hidden></div>
+  <main id="view" class="view" tabindex="-1">
+    <p class="loading">Loading…</p>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="config.js"></script>
+  <script src="vendor/chart.umd.min.js"></script>
+  <script src="vendor/qrcode.js"></script>
+  <script src="vendor/supabase.min.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
