@@ -270,3 +270,40 @@ details summary { cursor: pointer; color: var(--accent); font-size: 0.85rem; }
 .followup legend span { font-weight: 400; color: var(--muted); }
 .followup p { margin: 0; font-size: 0.86rem; color: var(--muted); }
 .issue .pill.warn { user-select: all; }
+
+/* Clickable dashboard elements */
+.clickable { cursor: pointer; }
+.kpi.clickable:hover, .row.clickable:hover { background: var(--surface-2); }
+.row.clickable { padding-left: 6px; padding-right: 6px; margin: 0 -6px; border-radius: 4px; }
+.heat .cellbox.clickable:hover { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* QR timing grid */
+table.timing { table-layout: fixed; min-width: 560px; }
+table.timing th[scope="row"] { width: 48px; text-transform: none; font-size: 0.85rem; color: var(--ink); }
+table.timing th { white-space: nowrap; font-size: 0.68rem; }
+table.timing td.tcell { padding: 3px; border-bottom: 0; }
+.tbox { height: 34px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-variant-numeric: tabular-nums; cursor: pointer; border: 1px solid var(--line); }
+.tbox:hover { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tbox.empty0 { color: var(--line); cursor: default; font-weight: 400; background: var(--surface-2); }
+.tbox.empty0:hover { outline: none; }
+#qrTiming .seg label { padding: 5px 10px; font-size: 0.8rem; }
+
+/* Drill-down panel */
+dialog.drill { border: 1px solid var(--line); border-radius: 10px; padding: 0; width: min(920px, calc(100% - 24px)); max-height: calc(100% - 40px); background: var(--surface); color: var(--ink); box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+dialog.drill::backdrop { background: rgba(10, 20, 18, 0.45); }
+.drill-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 16px 18px 12px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.drill-body { padding: 12px 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+.drill-body h3 { margin-top: 6px; }
+.drill-sum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: 8px; }
+.drill-sum > div { padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; border-right: 1px solid var(--line); min-width: 0; }
+.drill-sum > div:last-child { border-right: 0; }
+.drill-sum .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 600; display: flex; gap: 6px; align-items: center; }
+.drill-sum b { font-family: var(--f-display); font-size: 1.7rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.drill-sum span:not(.label):not(.pill) { font-size: 0.8rem; color: var(--muted); }
+.dimtag { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+.dimtag.safety { color: var(--bad); }
+
+/* Demo banner with View as */
+.demo-bar { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; justify-content: space-between; }
+.demo-bar select { padding: 3px 8px; font-size: 0.85rem; }
+.drill-sum .pill { align-self: flex-start; }

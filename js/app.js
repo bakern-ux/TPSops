@@ -11,6 +11,9 @@
   let data = { locations: [], audits: [], issues: [] };
   let charts = [];
   let loaded = false;
+  let me = null; // signed-in person's profile: { full_name, side, access }
+  const isOps = () => Boolean(me && me.access === "ops");
+  const AUDITOR_ROUTES = ["audit", "account"];
   const prefs = loadPrefs();
 
   // ---------- helpers ----------
@@ -90,23 +93,29 @@
     document.body.classList.toggle("public", isPublic);
     $$("#tabs a").forEach((a) => (a.dataset.route === r.name ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
     const view = $("#view");
+    view.onclick = view.onkeydown = view.onchange = null; // each screen sets its own
+    $("#drill")?.open && $("#drill").close();
 
     if (isPublic) return renderReport(view, r.param);
 
     if (store.mode === "live") {
       const session = await store.session().catch(() => null);
-      if (!session) return renderLogin(view);
+      if (!session) { me = null; loaded = false; return renderLogin(view); }
     }
     if (!loaded) {
-      try { await refresh(); } catch (e) { view.innerHTML = `<p class="notice bad">Could not load data: ${esc(e.message)}</p>`; return; }
+      try { me = await store.profile(); await refresh(); } catch (e) { view.innerHTML = `<p class="notice bad">Could not load data: ${esc(e.message)}</p>`; return; }
     }
-    const views = { dashboard: renderDashboard, audit: renderAuditForm, audits: renderAuditLog, issues: renderIssues, qr: renderQr, setup: renderSetup };
+    // Auditors see only New audit and their account; the database enforces the same limits.
+    $$("#tabs a").forEach((a) => { a.hidden = !isOps() && !AUDITOR_ROUTES.includes(a.dataset.route); });
+    if (!isOps() && !AUDITOR_ROUTES.includes(r.name)) { history.replaceState(null, "", "#audit"); return render(); }
+    const views = { dashboard: renderDashboard, audit: renderAuditForm, audits: renderAuditLog, issues: renderIssues, qr: renderQr, setup: renderSetup, account: renderAccount };
     (views[r.name] || renderDashboard)(view, r.param);
     view.focus({ preventScroll: true });
   }
 
   async function refresh() {
-    data = await store.loadAll();
+    data = await store.loadAll(me);
+    data.locations.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
     loaded = true;
   }
 
@@ -177,26 +186,28 @@
       <section class="kpis" aria-label="Summary">
         <div class="kpi"><span class="label"><i class="swatch customer"></i>Customer rating</span><span class="value">${fmt(cust)}</span><span class="note">${nCust} audits · <span class="pill ${band(cust)}">${cust == null ? "No data" : cust >= C.targetScore ? "Meets standard" : cust >= C.minimumScore ? "Below standard" : "Unacceptable"}</span></span></div>
         <div class="kpi"><span class="label"><i class="swatch vendor"></i>Vendor self-rating</span><span class="value">${fmt(vend)}</span><span class="note">${nVend} audits · <span class="pill ${band(vend)}">${vend == null ? "No data" : vend >= C.targetScore ? "Meets standard" : vend >= C.minimumScore ? "Below standard" : "Unacceptable"}</span></span></div>
-        <div class="kpi"><span class="label">Alignment gap</span><span class="value">${signed(gap)}</span><span class="note"><span class="pill ${gapBand(gap)}">${gapWord(gap)}</span> ${gap == null ? "" : gap > 0 ? "vendor rates higher" : gap < 0 ? "customer rates higher" : ""}</span></div>
-        <div class="kpi"><span class="label">Customer safety score</span><span class="value">${fmt(safetyCust)}</span><span class="note">Safety-tagged items only</span></div>
+        <div class="kpi clickable" data-drill="all" role="button" tabindex="0" title="Compare item by item"><span class="label">Alignment gap</span><span class="value">${signed(gap)}</span><span class="note"><span class="pill ${gapBand(gap)}">${gapWord(gap)}</span> ${gap == null ? "" : gap > 0 ? "vendor rates higher" : gap < 0 ? "customer rates higher" : ""}</span></div>
+        <div class="kpi clickable" data-drill="safety" role="button" tabindex="0" title="See safety items"><span class="label">Customer safety score</span><span class="value">${fmt(safetyCust)}</span><span class="note">Safety-tagged items only</span></div>
         <div class="kpi"><span class="label">Audits meeting standard</span><span class="value">${audits.length ? Math.round((meeting / audits.length) * 100) + "%" : "—"}</span><span class="note">${meeting} of ${audits.length} at ${C.targetScore.toFixed(1)} or better</span></div>
         <div class="kpi"><span class="label">QR feedback</span><span class="value">${qr.length}</span><span class="note">${qr.filter((i) => i.safety).length} safety reports · avg ${fmt(mean(qr.map((i) => i.rating)), 1)} ★</span></div>
-        <div class="kpi"><span class="label">Open issues</span><span class="value">${open.length}</span><span class="note"><span class="pill ${openSafety.length ? "bad" : "good"}">${openSafety.length} safety</span> as of today</span></div>
+        <div class="kpi clickable" data-href="#issues" role="button" tabindex="0" title="Open the issues list"><span class="label">Open issues</span><span class="value">${open.length}</span><span class="note"><span class="pill ${openSafety.length ? "bad" : "good"}">${openSafety.length} safety</span> as of today</span></div>
         <div class="kpi"><span class="label">Time to resolve</span><span class="value">${fmt(mean(resDays), 1)}<small style="font-size:1rem"> days</small></span><span class="note">${resolved.length ? Math.round((withinSla.length / resolved.length) * 100) + "% within target" : "No resolved issues"} (${C.slaDays.safety}d safety, ${C.slaDays.standard}d other)</span></div>
       </section>
 
       <div class="grid2">
-        <section class="panel"><div class="panel-head"><h2>Customer vs vendor by service area</h2><p>Average audit score</p></div><div class="chart-box"><canvas id="chCat" role="img" aria-label="Customer and vendor scores by service area"></canvas></div></section>
-        <section class="panel"><div class="panel-head"><h2>Weekly trend</h2><p>Dashed line is the ${C.targetScore.toFixed(1)} standard</p></div><div class="chart-box"><canvas id="chTrend" role="img" aria-label="Weekly customer and vendor scores"></canvas></div></section>
-        <section class="panel"><div class="panel-head"><h2>Scoring dimensions</h2><p>Service, safety, condition, appearance</p></div><div class="chart-box"><canvas id="chDim" role="img" aria-label="Scores by dimension"></canvas></div></section>
-        <section class="panel"><div class="panel-head"><h2>Activity</h2><p>Audits by side and QR feedback per week</p></div><div class="chart-box"><canvas id="chUse" role="img" aria-label="Audits and feedback per week"></canvas></div></section>
+        <section class="panel"><div class="panel-head"><h2>Customer vs vendor by service area</h2><p>Click a bar for item-by-item detail</p></div><div class="chart-box"><canvas id="chCat" role="img" aria-label="Customer and vendor scores by service area"></canvas></div></section>
+        <section class="panel"><div class="panel-head"><h2>Weekly trend</h2><p>Dashed line is the ${C.targetScore.toFixed(1)} standard · click a week</p></div><div class="chart-box"><canvas id="chTrend" role="img" aria-label="Weekly customer and vendor scores"></canvas></div></section>
+        <section class="panel"><div class="panel-head"><h2>Scoring dimensions</h2><p>Click a bar to see its items</p></div><div class="chart-box"><canvas id="chDim" role="img" aria-label="Scores by dimension"></canvas></div></section>
+        <section class="panel"><div class="panel-head"><h2>Activity</h2><p>Audits and QR feedback per week · click a bar</p></div><div class="chart-box"><canvas id="chUse" role="img" aria-label="Audits and feedback per week"></canvas></div></section>
       </div>
+
+      <section class="panel" id="qrTiming">${qrTiming(issues)}</section>
 
       <section class="panel">
         <div class="panel-head"><h2>Location scorecard</h2>
           <div class="legend"><span><i class="swatch" style="background:var(--good-bg);border:1px solid var(--good)"></i>≥ ${C.targetScore.toFixed(1)}</span><span><i class="swatch" style="background:var(--warn-bg);border:1px solid var(--warn)"></i>${C.minimumScore.toFixed(1)}–${C.targetScore.toFixed(1)}</span><span><i class="swatch" style="background:var(--bad-bg);border:1px solid var(--bad)"></i>&lt; ${C.minimumScore.toFixed(1)}</span><span><b style="color:var(--bad)">!</b> customer and vendor differ by ${C.misalignedGap.toFixed(1)}+</span></div>
         </div>
-        <p class="sub" style="margin:0;color:var(--muted);font-size:.85rem">Each cell: combined average, then C (customer) and V (vendor).</p>
+        <p class="sub" style="margin:0;color:var(--muted);font-size:.85rem">Each cell: combined average, then C (customer) and V (vendor). Click a cell to see the responses behind it.</p>
         <div class="table-wrap">${heatmap(audits)}</div>
       </section>
 
@@ -210,7 +221,111 @@
     $("#fCat").onchange = (e) => { prefs.category = e.target.value; savePrefs(); render(); };
     $("#fLoc").onchange = (e) => { prefs.location = e.target.value; savePrefs(); render(); };
 
+    const activate = (el) => {
+      if (el.dataset.href) { location.hash = el.dataset.href; return; }
+      const d = el.dataset.drill;
+      if (d === "all") openDrill({ title: "All audits in this view", audits, issues: [] });
+      else if (d === "safety") openDrill({ title: "Safety items", audits, dim: "safety", issues: issues.filter((i) => i.safety) });
+      else if (d === "cell") {
+        const l = el.dataset.loc, c = el.dataset.cat;
+        openDrill({ title: `${locName(l)} · ${CAT[c].name}`, audits: audits.filter((a) => a.location_id === l && a.category === c),
+          issues: issues.filter((i) => i.location_id === l && i.category === c) });
+      } else if (d === "time") {
+        const [dow, slot] = el.dataset.key.split("|").map(Number);
+        const list = timingIssues(issues).filter((i) => timeKey(i) === el.dataset.key);
+        openDrill({ title: `QR feedback · ${DOW[dow]} ${SLOTS[slot].label}`, audits: [], issues: list, issuesOnly: true });
+      }
+    };
+    view.onclick = (e) => { const el = e.target.closest("[data-drill],[data-href]"); if (el) activate(el); };
+    view.onkeydown = (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-drill],[data-href]")) { e.preventDefault(); activate(e.target); } };
+    view.onchange = (e) => { if (e.target.name === "qrMode") { prefs.qrMode = e.target.value; savePrefs(); $("#qrTiming").innerHTML = qrTiming(issues); } };
+
     drawCharts(audits, issues);
+  }
+
+  // ---------- when QR feedback comes in (day of week × time of day) ----------
+  const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const DOW_ORDER = [1, 2, 3, 4, 5, 6, 0];
+  const SLOTS = [
+    { label: "Before 8am", from: 0, to: 8 }, { label: "8–10am", from: 8, to: 10 }, { label: "10am–12pm", from: 10, to: 12 },
+    { label: "12–2pm", from: 12, to: 14 }, { label: "2–4pm", from: 14, to: 16 }, { label: "4–6pm", from: 16, to: 18 }, { label: "After 6pm", from: 18, to: 24 },
+  ];
+  const QR_MODES = { low: { label: "Low scores (1–2)", test: (r) => r <= 2, tone: "bad" }, high: { label: "High scores (4–5)", test: (r) => r >= 4, tone: "good" }, all: { label: "All", test: () => true, tone: "accent" } };
+  function timeKey(i) { const d = new Date(i.created_at); const h = d.getHours(); return d.getDay() + "|" + SLOTS.findIndex((s) => h >= s.from && h < s.to); }
+  function timingIssues(issues) { const m = QR_MODES[prefs.qrMode] || QR_MODES.low; return issues.filter((i) => i.source === "qr" && i.rating && m.test(i.rating)); }
+
+  function qrTiming(issues) {
+    const modeId = QR_MODES[prefs.qrMode] ? prefs.qrMode : "low";
+    const mode = QR_MODES[modeId];
+    const list = timingIssues(issues);
+    const counts = {}; list.forEach((i) => { const k = timeKey(i); counts[k] = (counts[k] || 0) + 1; });
+    const max = Math.max(0, ...Object.values(counts));
+    const peak = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    const peakText = peak ? (() => { const [d, sl] = peak[0].split("|").map(Number); return `Busiest: <b>${DOW[d]} ${SLOTS[sl].label}</b> with ${peak[1]} ${modeId === "all" ? "ratings" : modeId === "low" ? "low scores" : "high scores"}.`; })() : "No QR ratings match in this period.";
+    const head = `<tr><th></th>${SLOTS.map((sl) => `<th style="text-align:center">${sl.label}</th>`).join("")}</tr>`;
+    const body = DOW_ORDER.map((d) => `<tr><th scope="row">${DOW[d]}</th>${SLOTS.map((sl, k) => {
+      const n = counts[d + "|" + k] || 0;
+      const pct = max ? Math.round(15 + (n / max) * 75) : 0;
+      return n
+        ? `<td class="tcell"><div class="tbox" data-drill="time" data-key="${d}|${k}" role="button" tabindex="0" title="${n} on ${DOW[d]} ${sl.label}" style="background:color-mix(in srgb, var(--${mode.tone === "accent" ? "accent" : mode.tone}) ${pct}%, transparent);${pct > 55 ? "color:#fff" : ""}">${n}</div></td>`
+        : `<td class="tcell"><div class="tbox empty0">·</div></td>`;
+    }).join("")}</tr>`).join("");
+    return `<div class="panel-head"><h2>When QR feedback comes in</h2>
+        <span class="seg" role="radiogroup" aria-label="Which ratings">${Object.entries(QR_MODES).map(([id, m]) => `<input type="radio" name="qrMode" id="qm-${id}" value="${id}"${id === modeId ? " checked" : ""}><label for="qm-${id}">${m.label}</label>`).join("")}</span></div>
+      <p class="sub" style="margin:0;color:var(--muted);font-size:.85rem">${peakText} Narrow it down with the Location and Service area filters above (for example Dining + Housekeeping) to see when a space needs extra staff. Click a cell to read those responses.</p>
+      <div class="table-wrap"><table class="timing"><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
+  }
+
+  // ---------- drill-down panel ----------
+  function openDrill({ title, audits, issues = [], dim = null, issuesOnly = false }) {
+    let dlg = $("#drill");
+    if (!dlg) {
+      dlg = document.createElement("dialog"); dlg.id = "drill"; dlg.className = "drill";
+      document.body.appendChild(dlg);
+      dlg.addEventListener("click", (e) => { if (e.target === dlg || e.target.closest("[data-close]")) dlg.close(); });
+    }
+    const cu = sideAvg(audits, "customer", dim ? (a) => auditDim(a, dim) : auditOverall);
+    const ve = sideAvg(audits, "vendor", dim ? (a) => auditDim(a, dim) : auditOverall);
+    const gap = cu != null && ve != null ? ve - cu : null;
+    // Item-by-item comparison: where exactly do the two sides disagree?
+    const items = {};
+    audits.forEach((a) => Object.entries(a.scores || {}).forEach(([k, v]) => {
+      if (v == null || !CRIT[k] || (dim && CRIT[k].dim !== dim)) return;
+      (items[k] = items[k] || { customer: [], vendor: [] })[a.side].push(v);
+    }));
+    const rows = Object.entries(items).map(([k, v]) => { const c = mean(v.customer), w = mean(v.vendor); return { k, c, w, nc: v.customer.length, nv: v.vendor.length, g: c != null && w != null ? w - c : null }; })
+      .sort((a, b) => Math.abs(b.g ?? -1) - Math.abs(a.g ?? -1));
+    const sorted = [...audits].sort((a, b) => (b.audit_date + b.created_at).localeCompare(a.audit_date + a.created_at));
+    const lowItems = (a) => Object.entries(a.scores || {}).filter(([k, v]) => v != null && v <= 2 && (!dim || CRIT[k]?.dim === dim)).map(([k, v]) => `${esc(CRIT[k]?.label || k)} (${v})`);
+    dlg.innerHTML = `
+      <div class="drill-head"><div><div class="eyebrow">Details</div><h2>${esc(title)}</h2></div><button class="btn small" type="button" data-close>Close</button></div>
+      <div class="drill-body">
+        ${issuesOnly ? "" : `
+        <div class="drill-sum">
+          <div><span class="label"><i class="swatch customer"></i>Customer</span><b>${fmt(cu)}</b><span>${audits.filter((a) => a.side === "customer").length} audits</span></div>
+          <div><span class="label"><i class="swatch vendor"></i>Vendor</span><b>${fmt(ve)}</b><span>${audits.filter((a) => a.side === "vendor").length} audits</span></div>
+          <div><span class="label">Gap</span><b>${signed(gap)}</b><span class="pill ${gapBand(gap)}">${gapWord(gap)}</span></div>
+        </div>
+        <h3>Item by item</h3>
+        ${rows.length ? `<div class="table-wrap"><table><thead><tr><th>Item</th><th>Area</th><th class="n">Customer <small>· ratings</small></th><th class="n">Vendor <small>· ratings</small></th><th class="n">Gap</th></tr></thead><tbody>
+          ${rows.map((r) => `<tr><td>${esc(CRIT[r.k].label)}<div class="dimtag ${CRIT[r.k].dim}">${esc(DIMENSIONS.find((d) => d.id === CRIT[r.k].dim).name)}</div></td><td>${esc(CAT[CRIT[r.k].category].name)}</td>
+            <td class="n"><span class="pill ${band(r.c)}">${fmt(r.c, 1)}</span> <small>${r.nc}</small></td><td class="n"><span class="pill ${band(r.w)}">${fmt(r.w, 1)}</span> <small>${r.nv}</small></td>
+            <td class="n"><span class="pill ${gapBand(r.g)}">${signed(r.g)}</span></td></tr>`).join("")}
+        </tbody></table></div>` : `<p class="empty">No scored items here.</p>`}
+        <h3>Audits (${sorted.length})</h3>
+        ${sorted.length ? `<div class="rows">${sorted.slice(0, 60).map((a) => { const o = auditOverall(a); const low = lowItems(a); return `
+          <div class="row"><div><div class="title"><span class="pill ${a.side}">${a.side === "customer" ? "Customer" : "Vendor"}</span> ${esc(locName(a.location_id))} · ${esc(CAT[a.category]?.name || a.category)}</div>
+            <div class="meta">${esc(a.audit_date)} · ${esc(a.auditor)}</div>
+            ${low.length ? `<div class="meta" style="color:var(--bad)">Low: ${low.join("; ")}</div>` : ""}
+            ${a.comments ? `<div class="meta">“${esc(a.comments)}”</div>` : ""}</div>
+            <span class="pill ${band(o)}">${fmt(o)}</span></div>`; }).join("")}</div>${sorted.length > 60 ? `<p class="empty">Showing the latest 60 of ${sorted.length}.</p>` : ""}` : `<p class="empty">No audits.</p>`}`}
+        ${issues.length ? `<h3>${issuesOnly ? "Responses" : "Feedback and issues"} (${issues.length})</h3><div class="rows">${[...issues].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 80).map((i) => `
+          <div class="row"><div><div class="title">${esc(locName(i.location_id))} · ${esc(CAT[i.category]?.name || i.category)} ${i.safety ? '<span class="pill safety">Safety</span>' : ""}</div>
+            <div class="meta">${dateTime(i.created_at)} · ${stars(i.rating)} · ${STATUS[i.status] || i.status}</div>
+            ${i.comment ? `<div class="meta">“${esc(i.comment)}”</div>` : ""}</div>
+            <a class="btn small" href="#issues.${esc(i.id)}" data-close>Open</a></div>`).join("")}</div>` : ""}
+      </div>`;
+    if (!dlg.open) dlg.showModal();
   }
 
   function heatmap(audits) {
@@ -226,7 +341,7 @@
         const all = mean(rows.map(auditOverall));
         const cu = sideAvg(rows, "customer"); const ve = sideAvg(rows, "vendor");
         const flag = cu != null && ve != null && Math.abs(ve - cu) >= C.misalignedGap;
-        return `<td class="cell"><div class="cellbox ${band(all)}" title="${esc(l.name)} · ${esc(c.name)}: ${rows.length} audits"><span class="big">${fmt(all, 1)}${flag ? ' <span class="flag" aria-label="misaligned">!</span>' : ""}</span><span class="split">C ${fmt(cu, 1)} · V ${fmt(ve, 1)}</span></div></td>`;
+        return `<td class="cell"><div class="cellbox ${band(all)} clickable" data-drill="cell" data-loc="${esc(l.id)}" data-cat="${c.id}" role="button" tabindex="0" title="${esc(l.name)} · ${esc(c.name)}: ${rows.length} audits. Click for details."><span class="big">${fmt(all, 1)}${flag ? ' <span class="flag" aria-label="misaligned">!</span>' : ""}</span><span class="split">C ${fmt(cu, 1)} · V ${fmt(ve, 1)}</span></div></td>`;
       }).join("");
       return `<tr><td><b>${esc(l.name)}</b><div style="font-size:.78rem;color:var(--muted)">${esc(l.building || "")}</div></td>${cells}</tr>`;
     }).join("");
@@ -243,7 +358,7 @@
     pairs.sort((a, b) => Math.abs(b.g) - Math.abs(a.g));
     if (!pairs.length) return `<p class="empty">Gaps appear once both sides have audited the same area in this period.</p>`;
     return `<div class="rows">${pairs.slice(0, 6).map((p) => `
-      <div class="row"><div><div class="title">${esc(p.l.name)}</div><div class="meta">${esc(CAT[p.c].name)} · customer ${fmt(p.cu)} · vendor ${fmt(p.ve)}</div></div>
+      <div class="row clickable" data-drill="cell" data-loc="${esc(p.l.id)}" data-cat="${p.c}" role="button" tabindex="0"><div><div class="title">${esc(p.l.name)}</div><div class="meta">${esc(CAT[p.c].name)} · customer ${fmt(p.cu)} · vendor ${fmt(p.ve)}</div></div>
       <div class="gapbar"><span class="pill ${gapBand(p.g)}">${gapWord(p.g)}</span><b>${signed(p.g)}</b></div></div>`).join("")}</div>`;
   }
 
@@ -252,7 +367,7 @@
     const now = Date.now();
     return `<div class="rows">${list.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).slice(0, 6).map((i) => {
       const age = days(now - new Date(i.created_at));
-      return `<div class="row"><div><div class="title">${esc(locName(i.location_id))}</div><div class="meta">${esc(i.comment).slice(0, 110)}</div></div>
+      return `<div class="row clickable" data-href="#issues.${esc(i.id)}" role="button" tabindex="0"><div><div class="title">${esc(locName(i.location_id))}</div><div class="meta">${esc(i.comment).slice(0, 110)}</div></div>
         <span class="pill ${age > C.slaDays.safety ? "bad" : "warn"}">${age < 1 ? Math.max(1, Math.round(age * 24)) + "h" : Math.round(age) + "d"} open</span></div>`;
     }).join("")}</div>`;
   }
@@ -268,6 +383,11 @@
     const legend = { position: "bottom", labels: { boxWidth: 10, boxHeight: 10, color: ink } };
     const tip = { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y != null && ctx.chart.config.options.indexAxis !== "y" ? fmt(ctx.parsed.y) : fmt(ctx.parsed.x)}` } };
     const bar = (label, data, color) => ({ label, data, backgroundColor: color, borderRadius: 3, maxBarThickness: 26 });
+    // Every chart opens the responses behind whatever was clicked.
+    const clickable = (fn) => ({
+      onClick: (evt, els) => { if (els.length) fn(els[0].index, els[0].datasetIndex); },
+      onHover: (evt, els) => { evt.native.target.style.cursor = els.length ? "pointer" : "default"; },
+    });
 
     const cats = CATEGORIES.filter((c) => prefs.category === "all" || c.id === prefs.category);
     charts.push(new Chart($("#chCat"), {
@@ -275,18 +395,22 @@
       data: { labels: cats.map((c) => c.name),
         datasets: [bar("Customer", cats.map((c) => sideAvg(audits.filter((a) => a.category === c.id), "customer")), cu),
                    bar("Vendor", cats.map((c) => sideAvg(audits.filter((a) => a.category === c.id), "vendor")), ve)] },
-      options: { maintainAspectRatio: false, scales: { y: scoreAxis, x: catAxis }, plugins: { legend, tooltip: tip } },
+      options: { maintainAspectRatio: false, scales: { y: scoreAxis, x: catAxis }, plugins: { legend, tooltip: tip },
+        ...clickable((i) => openDrill({ title: `${cats[i].name}: customer vs vendor`, audits: audits.filter((a) => a.category === cats[i].id), issues: issues.filter((x) => x.category === cats[i].id) })) },
     }));
 
     const weeks = weekList(audits, issues);
     const wk = (d) => isoDay(weekStart(d));
+    const inWeek = (w) => audits.filter((a) => wk(parseDay(a.audit_date)) === isoDay(w));
+    const qrInWeek = (w) => issues.filter((i) => i.source === "qr" && wk(new Date(i.created_at)) === isoDay(w));
     const byWeek = (side) => weeks.map((w) => sideAvg(audits.filter((a) => wk(parseDay(a.audit_date)) === isoDay(w)), side));
     const lineDs = (label, d, color) => ({ label, data: d, borderColor: color, backgroundColor: color, tension: 0.25, spanGaps: true, pointRadius: 3, pointHoverRadius: 5, borderWidth: 2 });
     charts.push(new Chart($("#chTrend"), {
       type: "line",
       data: { labels: weeks.map(shortDate), datasets: [lineDs("Customer", byWeek("customer"), cu), lineDs("Vendor", byWeek("vendor"), ve),
         { label: "Standard", data: weeks.map(() => C.targetScore), borderColor: tg, borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 0 }] },
-      options: { maintainAspectRatio: false, scales: { y: scoreAxis, x: { ...catAxis, ticks: { color: muted, maxRotation: 0, autoSkip: true } } }, plugins: { legend, tooltip: tip }, interaction: { mode: "index", intersect: false } },
+      options: { maintainAspectRatio: false, scales: { y: scoreAxis, x: { ...catAxis, ticks: { color: muted, maxRotation: 0, autoSkip: true } } }, plugins: { legend, tooltip: tip }, interaction: { mode: "index", intersect: false },
+        ...clickable((i) => openDrill({ title: `Week of ${shortDate(weeks[i])}`, audits: inWeek(weeks[i]), issues: qrInWeek(weeks[i]) })) },
     }));
 
     charts.push(new Chart($("#chDim"), {
@@ -294,7 +418,8 @@
       data: { labels: DIMENSIONS.map((d) => d.name),
         datasets: [bar("Customer", DIMENSIONS.map((d) => sideAvg(audits, "customer", (a) => auditDim(a, d.id))), cu),
                    bar("Vendor", DIMENSIONS.map((d) => sideAvg(audits, "vendor", (a) => auditDim(a, d.id))), ve)] },
-      options: { indexAxis: "y", maintainAspectRatio: false, scales: { x: scoreAxis, y: catAxis }, plugins: { legend, tooltip: tip } },
+      options: { indexAxis: "y", maintainAspectRatio: false, scales: { x: scoreAxis, y: catAxis }, plugins: { legend, tooltip: tip },
+        ...clickable((i) => openDrill({ title: `${DIMENSIONS[i].name} items`, audits, dim: DIMENSIONS[i].id, issues: DIMENSIONS[i].id === "safety" ? issues.filter((x) => x.safety) : [] })) },
     }));
 
     const count = (pred) => weeks.map((w) => pred(isoDay(w)));
@@ -305,7 +430,10 @@
         { ...bar("Vendor audits", count((w) => audits.filter((a) => a.side === "vendor" && wk(parseDay(a.audit_date)) === w).length), ve), stack: "audits" },
         { ...bar("QR feedback", count((w) => issues.filter((i) => i.source === "qr" && wk(new Date(i.created_at)) === w).length), acc), stack: "qr" },
       ] },
-      options: { maintainAspectRatio: false, scales: { x: { ...catAxis, stacked: true, ticks: { color: muted, maxRotation: 0, autoSkip: true } }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0, color: muted }, grid: { color: line }, border: { display: false } } }, plugins: { legend } },
+      options: { maintainAspectRatio: false, scales: { x: { ...catAxis, stacked: true, ticks: { color: muted, maxRotation: 0, autoSkip: true } }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0, color: muted }, grid: { color: line }, border: { display: false } } }, plugins: { legend },
+        ...clickable((i, ds) => ds === 2
+          ? openDrill({ title: `QR feedback · week of ${shortDate(weeks[i])}`, audits: [], issues: qrInWeek(weeks[i]), issuesOnly: true })
+          : openDrill({ title: `${ds === 0 ? "Customer" : "Vendor"} audits · week of ${shortDate(weeks[i])}`, audits: inWeek(weeks[i]).filter((a) => a.side === (ds === 0 ? "customer" : "vendor")) })) },
     }));
   }
 
@@ -314,6 +442,8 @@
     const locs = data.locations.filter((l) => l.active);
     const loc = locs.find((l) => l.id === prefs.auditLoc) || locs[0];
     const today = isoDay(new Date());
+    const mySide = me?.side === "vendor" ? "vendor" : "customer";
+    const myName = me?.full_name || prefs.auditor || "";
     view.innerHTML = `
       <section class="page-head"><div><div class="eyebrow">New audit</div><h1>Rate a location</h1>
         <p class="sub">Score each item 1–5, or N/A if it does not apply. Safety items scored 1 or 2 open a safety issue automatically.</p></div></section>
@@ -321,10 +451,10 @@
         <div class="form-grid">
           <label class="field">Rating as
             <span class="seg" role="radiogroup" aria-label="Rating as">
-              <input type="radio" name="side" id="sideC" value="customer" ${prefs.side !== "vendor" ? "checked" : ""}><label for="sideC">Customer</label>
-              <input type="radio" name="side" id="sideV" value="vendor" ${prefs.side === "vendor" ? "checked" : ""}><label for="sideV">Vendor</label>
+              ${mySide === "vendor" ? "" : `<input type="radio" name="side" id="sideC" value="customer" checked><label for="sideC">Customer</label>`}
+              <input type="radio" name="side" id="sideV" value="vendor" ${mySide === "vendor" ? "checked" : ""}><label for="sideV">Vendor</label>
             </span></label>
-          <label class="field" for="aAuditor">Your name and role<input type="text" id="aAuditor" required value="${esc(prefs.auditor)}" placeholder="e.g. J. Smith, Facilities Director" autocomplete="name"></label>
+          <label class="field" for="aAuditor">Your name and role<input type="text" id="aAuditor" required value="${esc(myName)}" placeholder="e.g. J. Smith, Facilities Director" autocomplete="name"></label>
           <label class="field" for="aDate">Audit date<input type="date" id="aDate" value="${today}" max="${today}"></label>
           <label class="field" for="aLoc">Location<select id="aLoc">${locs.map((l) => `<option value="${esc(l.id)}"${loc && l.id === loc.id ? " selected" : ""}>${esc(l.name)}</option>`).join("")}</select></label>
           <label class="field" for="aCat">Service area<select id="aCat"></select></label>
@@ -387,7 +517,8 @@
       else if (Object.values(scores).every((v) => v == null)) problems.push("Score at least one item.");
       if (problems.length) { err.textContent = problems.join(" "); err.hidden = false; return; }
 
-      prefs.side = side; prefs.auditor = auditor; savePrefs();
+      prefs.auditor = auditor; savePrefs();
+      if (me && auditor !== me.full_name) { store.setMyName(auditor).then(() => { me.full_name = auditor; }).catch(() => {}); }
       const btn = e.submitter || $("#auditForm button[type=submit]"); btn.disabled = true;
       try {
         const audit = await store.addAudit({ audit_date: $("#aDate").value || isoDay(new Date()), side, auditor, location_id: $("#aLoc").value, category: cat.id, scores, comments: $("#aComments").value.trim() });
@@ -396,14 +527,14 @@
         if (lowSafety.length) {
           await store.addIssue({ location_id: audit.location_id, category: cat.id, rating: Math.min(...lowSafety.map((c) => scores[c.id])),
             comment: "Audit flagged: " + lowSafety.map((c) => c.label).join("; ") + ($("#aComments").value.trim() ? " — " + $("#aComments").value.trim() : ""),
-            submitter: `${auditor} (${side})`, contact: "", safety: true, source: "audit", status: "open", priority: "high", assigned_to: "", resolution: "", resolved_at: null, brightly_exported_at: null, audit_id: audit.id });
+            submitter: `${auditor} (${side})`, contact: "", safety: true, source: "audit", status: "open", priority: "high", assigned_to: null, resolution: null, resolved_at: null, brightly_exported_at: null, audit_id: audit.id });
           opened++;
         }
         if ($("#aIssue").checked && $("#aComments").value.trim() && !lowSafety.length) {
           const o = auditOverall(audit);
           await store.addIssue({ location_id: audit.location_id, category: cat.id, rating: Math.round(o ?? 3), comment: $("#aComments").value.trim(),
             submitter: `${auditor} (${side})`, contact: "", safety: false, source: "audit", status: "open", priority: o != null && o < C.minimumScore ? "high" : "medium",
-            assigned_to: "", resolution: "", resolved_at: null, brightly_exported_at: null, audit_id: audit.id });
+            assigned_to: null, resolution: null, resolved_at: null, brightly_exported_at: null, audit_id: audit.id });
           opened++;
         }
         await refresh();
@@ -443,9 +574,11 @@
   }
 
   // ---------- issues ----------
-  function renderIssues(view) {
+  function renderIssues(view, param) {
     const f = { status: prefs.iStatus || "active", safety: !!prefs.iSafety, q: prefs.iQ || "" };
-    const list = data.issues.filter((i) =>
+    // "#issues.<id>" (from the dashboard) shows just that issue.
+    const focus = param ? data.issues.find((i) => i.id === param) : null;
+    const list = focus ? [focus] : data.issues.filter((i) =>
       (f.status === "all" || (f.status === "active" ? needsAction(i) : i.status === f.status))
       && (!f.safety || i.safety)
       && (prefs.location === "all" || i.location_id === prefs.location)
@@ -460,6 +593,7 @@
           <label class="field" for="iQ">Search<input type="search" id="iQ" value="${esc(f.q)}" placeholder="Comment or location"></label>
           <label class="check" style="align-self:flex-end;padding-bottom:8px"><input type="checkbox" id="iSafety"${f.safety ? " checked" : ""}> Safety only</label>
         </div></section>
+      ${focus ? `<p class="notice">Showing one issue from the dashboard. <a href="#issues">Show all issues</a></p>` : ""}
       <section class="panel">
         <div class="toolbar">
           <label class="check"><input type="checkbox" id="iAll"> Select all (${list.length})</label>
@@ -575,7 +709,7 @@
           <div class="toolbar no-print"><button class="btn small" type="button" data-copy="${esc(url(l))}">Copy link</button><a class="btn small" href="#report.${esc(l.id)}">Preview</a></div>
         </div>`).join("")}</div>`;
     $("#qPrint").onclick = () => window.print();
-    view.addEventListener("click", (e) => { const b = e.target.closest("[data-copy]"); if (b) copy(b.dataset.copy); });
+    view.onclick = (e) => { const b = e.target.closest("[data-copy]"); if (b) copy(b.dataset.copy); };
   }
 
   // ---------- setup ----------
@@ -598,6 +732,7 @@
           <button class="btn primary" type="submit">Add location</button>
         </form>
       </section>
+      <section class="panel" id="people"></section>
       <section class="panel">
         <div class="panel-head"><h2>Data</h2></div>
         ${store.mode === "demo" ? `
@@ -605,12 +740,7 @@
           <div class="toolbar"><button class="btn" id="dReset" type="button">Reload sample data</button><button class="btn" id="dClear" type="button">Clear audits and issues</button><button class="btn" id="dJson" type="button">Export everything (JSON)</button></div>
           <p class="notice" id="dConfirm" hidden></p>`
         : `<p style="margin:0">Connected to the shared database. Signed-in staff can enter audits and manage issues; anyone with a QR link can submit feedback.</p>
-          <div class="toolbar"><button class="btn" id="dJson" type="button">Export everything (JSON)</button><button class="btn" id="dOut" type="button">Sign out</button></div>
-          <form id="pwForm" class="toolbar" style="align-items:flex-end">
-            <label class="field" for="pwNew">Change your password<input type="password" id="pwNew" minlength="8" autocomplete="new-password" placeholder="At least 8 characters"></label>
-            <label class="field" for="pwNew2">Type it again<input type="password" id="pwNew2" minlength="8" autocomplete="new-password"></label>
-            <button class="btn" type="submit">Save password</button>
-          </form>`}
+          <div class="toolbar"><button class="btn" id="dJson" type="button">Export everything (JSON)</button></div>`}
         <p style="margin:0;color:var(--muted);font-size:.85rem">Standard ${C.targetScore.toFixed(1)} · minimum ${C.minimumScore.toFixed(1)} · aligned within ±${C.alignedGap} · response targets ${C.slaDays.safety} day (safety) / ${C.slaDays.standard} days. Change these in config.js.</p>
       </section>`;
 
@@ -630,15 +760,7 @@
       catch (ex) { toast("Could not add: " + ex.message); }
     };
     $("#dJson").onclick = () => downloadText(`tps-ops-export-${isoDay(new Date())}.json`, JSON.stringify(data, null, 2), "application/json");
-    if ($("#dOut")) $("#dOut").onclick = async () => { await store.signOut(); render(); };
-    if ($("#pwForm")) $("#pwForm").onsubmit = async (e) => {
-      e.preventDefault();
-      const a = $("#pwNew").value, b = $("#pwNew2").value;
-      if (a.length < 8) return toast("Use at least 8 characters");
-      if (a !== b) return toast("The two passwords don't match");
-      try { await store.changePassword(a); $("#pwForm").reset(); toast("Password changed"); }
-      catch (ex) { toast("Could not change password: " + ex.message); }
-    };
+    renderPeople($("#people"));
     // Two-step confirm, since a destructive action deserves one.
     const confirmThen = (msg, fn) => {
       const box = $("#dConfirm"); box.hidden = false;
@@ -648,6 +770,77 @@
     };
     if ($("#dReset")) $("#dReset").onclick = () => confirmThen("Replace everything in this browser with fresh sample data?", () => store.resetDemo().then(() => toast("Sample data reloaded")));
     if ($("#dClear")) $("#dClear").onclick = () => confirmThen("Delete all audits and issues in this browser? Locations are kept.", () => store.clearAll().then(() => toast("Audits and issues cleared")));
+  }
+
+  // People: who is on which side, and who sees the whole app vs. New audit only.
+  async function renderPeople(box) {
+    const head = `<div class="panel-head"><h2>People</h2><p>Side and access for everyone who can sign in</p></div>`;
+    if (store.mode === "demo") {
+      box.innerHTML = head + `<p style="margin:0">In live mode this lists each person with their side (customer or vendor) and access. <b>Ops team</b> sees everything. <b>New audit only</b> can submit audits and nothing else. In this demo, use <b>View as</b> in the yellow bar to preview each kind of person.</p>`;
+      return;
+    }
+    box.innerHTML = head + `<p class="empty">Loading…</p>`;
+    let people = [];
+    try { people = await store.listProfiles(); } catch (e) {
+      box.innerHTML = head + `<p class="notice bad">Could not load people: ${esc(e.message)}. Run supabase/002_roles.sql in Supabase (see the guide).</p>`; return;
+    }
+    const opt = (v, l, cur) => `<option value="${v}"${cur === v ? " selected" : ""}>${l}</option>`;
+    box.innerHTML = head + `
+      <p style="margin:0;font-size:.88rem;color:var(--muted)">To add someone: in Supabase go to Authentication → Users → Add user → Create new user (with Auto Confirm User checked). They appear here as <b>Customer · New audit only</b>; change that below and click Save.</p>
+      <div class="table-wrap"><table><thead><tr><th>Email</th><th>Name and role</th><th>Side</th><th>Access</th><th></th></tr></thead><tbody>
+      ${people.map((p) => `<tr data-id="${esc(p.user_id)}">
+        <td style="white-space:nowrap">${esc(p.email || "")}${me && p.user_id === me.user_id ? ' <span class="pill neutral">you</span>' : ""}</td>
+        <td><input type="text" class="pName" value="${esc(p.full_name)}" aria-label="Name and role" placeholder="Name, role"></td>
+        <td><select class="pSide" aria-label="Side">${opt("customer", "Customer", p.side)}${opt("vendor", "Vendor", p.side)}</select></td>
+        <td><select class="pAccess" aria-label="Access">${opt("ops", "Ops team (everything)", p.access)}${opt("auditor", "New audit only", p.access)}</select></td>
+        <td><button class="btn small" type="button" data-saveperson>Save</button></td></tr>`).join("")}
+      </tbody></table></div>`;
+    box.querySelector("tbody").onclick = async (e) => {
+      if (!e.target.matches("[data-saveperson]")) return;
+      const tr = e.target.closest("tr"); const id = tr.dataset.id;
+      const patch = { full_name: $(".pName", tr).value.trim(), side: $(".pSide", tr).value, access: $(".pAccess", tr).value };
+      if (me && id === me.user_id && patch.access !== "ops") return toast("You can't remove your own ops access. Ask another ops team member.");
+      try { await store.updateProfile(id, patch); if (me && id === me.user_id) Object.assign(me, patch); toast("Saved"); } catch (ex) { toast("Could not save: " + ex.message); }
+    };
+  }
+
+  // ---------- account ----------
+  function renderAccount(view) {
+    const live = store.mode === "live";
+    view.innerHTML = `
+      <section class="page-head"><div><div class="eyebrow">Account</div><h1>${esc(me?.full_name || "Your account")}</h1>
+        <p class="sub">${esc(me?.email && me.email !== "demo" ? me.email : "")}${me ? ` · ${me.side === "vendor" ? "Vendor" : "Customer"} · ${isOps() ? "Ops team" : "New audit only"}` : ""}</p></div></section>
+      <section class="panel">
+        <h2>Your name</h2>
+        <p style="margin:0;color:var(--muted);font-size:.88rem">This fills in “Your name and role” on new audits.</p>
+        <form id="nameForm" class="toolbar" style="align-items:flex-end">
+          <label class="field" for="myName">Name and role<input type="text" id="myName" maxlength="120" value="${esc(me?.full_name || "")}" placeholder="e.g. J. Smith, Facilities Director"></label>
+          <button class="btn" type="submit">Save name</button>
+        </form>
+      </section>
+      ${live ? `<section class="panel">
+        <h2>Password</h2>
+        <form id="pwForm" class="toolbar" style="align-items:flex-end">
+          <label class="field" for="pwNew">New password<input type="password" id="pwNew" minlength="8" autocomplete="new-password" placeholder="At least 8 characters"></label>
+          <label class="field" for="pwNew2">Type it again<input type="password" id="pwNew2" minlength="8" autocomplete="new-password"></label>
+          <button class="btn" type="submit">Save password</button>
+        </form>
+        <div><button class="btn" id="dOut" type="button">Sign out</button></div>
+      </section>` : ""}`;
+    $("#nameForm").onsubmit = async (e) => {
+      e.preventDefault(); const n = $("#myName").value.trim(); if (!n) return toast("Enter a name");
+      try { await store.setMyName(n); if (me) me.full_name = n; toast("Name saved"); render(); } catch (ex) { toast("Could not save: " + ex.message); }
+    };
+    if (!live) return;
+    $("#dOut").onclick = async () => { await store.signOut(); me = null; loaded = false; render(); };
+    $("#pwForm").onsubmit = async (e) => {
+      e.preventDefault();
+      const a = $("#pwNew").value, b = $("#pwNew2").value;
+      if (a.length < 8) return toast("Use at least 8 characters");
+      if (a !== b) return toast("The two passwords don't match");
+      try { await store.changePassword(a); $("#pwForm").reset(); toast("Password changed"); }
+      catch (ex) { toast("Could not change password: " + ex.message); }
+    };
   }
 
   // ---------- login (live mode) ----------
@@ -740,8 +933,12 @@
     $("#orgName").textContent = C.orgName;
     if (store.mode === "demo") {
       const b = $("#modeBanner");
-      b.innerHTML = `<div><b>Demo mode.</b> Sample data (people marked “demo”) stored in this browser only. Connect Supabase in config.js to go live.</div>`;
+      let role = "ops"; try { role = localStorage.getItem("tpsops.demoRole") || "ops"; } catch (e) { /* ignore */ }
+      const o = (v, l) => `<option value="${v}"${role === v ? " selected" : ""}>${l}</option>`;
+      b.innerHTML = `<div class="demo-bar"><span><b>Demo mode.</b> Sample data (people marked “demo”) stored in this browser only.</span>
+        <label class="check" for="demoRole">View as <select id="demoRole">${o("ops", "Ops team")}${o("customer", "Customer, New audit only")}${o("vendor", "Vendor, New audit only")}</select></label></div>`;
       b.hidden = false;
+      $("#demoRole").onchange = (e) => { try { localStorage.setItem("tpsops.demoRole", e.target.value); } catch (ex) { /* ignore */ } me = null; loaded = false; render(); };
     }
     window.addEventListener("hashchange", render);
     render();

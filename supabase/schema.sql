@@ -1,5 +1,6 @@
 -- TPS Ops database schema for Supabase (Postgres).
 -- Run once in the Supabase dashboard: SQL Editor → New query → paste → Run.
+-- Then run 002_roles.sql the same way (people, sides and access levels).
 --
 -- Access model
 --   * Anyone with a QR link (the anon key, not signed in) can read the active location list

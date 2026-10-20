@@ -240,6 +240,42 @@
       });
     });
 
+    // Extra QR ratings with time-of-day patterns, so the "when feedback comes in" chart has something to show:
+    // Dining restrooms slip around lunch on Tue/Thu, the SRC on Friday afternoons; most other ratings are good.
+    const lowNotes = ["Restroom needs attention.", "Out of paper towels.", "Trash full.", "Floors dirty.", "Sinks messy.", "Smells bad."];
+    const highNotes = ["", "", "Looks great.", "Clean today, thanks."];
+    for (let n = 0; n < 150; n++) {
+      const daysAgo = Math.floor(rand() * 68);
+      const when = new Date(today.getTime() - daysAgo * 86400000);
+      const r = rand();
+      let loc, category = "housekeeping", rating, hour;
+      if (r < 0.28) {
+        while (![2, 4].includes(when.getDay())) when.setDate(when.getDate() - 1);
+        loc = "dining"; hour = 11 + rand() * 2.5; rating = rand() < 0.8 ? 1 + Math.floor(rand() * 2) : 3;
+      } else if (r < 0.42) {
+        while (when.getDay() !== 5) when.setDate(when.getDate() - 1);
+        loc = "src"; hour = 14 + rand() * 3; rating = rand() < 0.75 ? 1 + Math.floor(rand() * 2) : 3;
+      } else {
+        const pool = DEMO_LOCATIONS.filter((l) => l.categories.includes("housekeeping"));
+        loc = pool[Math.floor(rand() * pool.length)].id;
+        if (rand() < 0.2) category = "maintenance";
+        hour = 7 + rand() * 11; rating = rand() < 0.8 ? 4 + Math.floor(rand() * 2) : 3;
+      }
+      when.setHours(Math.floor(hour), Math.floor((hour % 1) * 60), 0, 0);
+      if (when > now) continue;
+      const age = (now - when) / 86400000;
+      const low = rating <= 3;
+      const status = !low ? "noted" : age < 2 && rating <= 2 ? "open" : "resolved";
+      const resolvedAt = status === "resolved" ? new Date(Math.min(now.getTime(), when.getTime() + (0.1 + rand() * 2) * 86400000)).toISOString() : null;
+      issues.push({
+        id: uuid(rand), created_at: when.toISOString(), location_id: loc, category, rating,
+        comment: low ? lowNotes[Math.floor(rand() * lowNotes.length)] : highNotes[Math.floor(rand() * highNotes.length)],
+        submitter: "", contact: "", safety: false, source: "qr", status, priority: rating <= 1 ? "high" : rating <= 2 ? "medium" : "low",
+        assigned_to: status === "resolved" ? "Vendor" : "", resolution: status === "resolved" ? "Cleaned and restocked." : "",
+        resolved_at: resolvedAt, brightly_exported_at: null, audit_id: null,
+      });
+    }
+
     return { locations: DEMO_LOCATIONS.map((l) => ({ ...l })), audits, issues };
   }
 

@@ -80,6 +80,14 @@ but they can't see or change your data.
 4. Click **+ New query**. Paste into the big text box (Ctrl+V, or Cmd+V on a Mac).
 5. Click **Run** (bottom right). You should see **"Success. No rows returned"**.
 6. To check: click **Table Editor** in the left-hand menu, then **locations**. You should see your 24 locations.
+7. Repeat steps 1–5 with a second file: **github.com/bakern-ux/TPSops/blob/main/supabase/002_roles.sql**.
+   It adds **people and access levels**: each person's side (customer or vendor) and whether they see the whole app
+   or only *New audit*.
+8. Give yourself full access. In a **+ New query**, run this line with your own email:
+   ```sql
+   update public.profiles set access = 'ops' where email = 'you@trinityprep.org';
+   ```
+   You should see **"Success"** with **1 row** affected. If it says 0 rows, sign in to the app once, then run it again.
 
 ### 4c. Control who can sign in
 Only people you invite should be able to enter audits or see the dashboard. Anyone can still use the QR feedback form.
@@ -93,7 +101,8 @@ Only people you invite should be able to enter audits or see the dashboard. Anyo
    click **Users** → **Add user** → **Create new user**. Enter their email and a temporary password, and make sure
    **Auto Confirm User** is checked. Click **Create user**. This sends no email.
    Give each person their temporary password. They sign in at the app with their email and password,
-   then change it under **Setup → Change your password**.
+   then change it under **Account → Password**. New people start as **Customer · New audit only**. Change that in
+   step 6b.
 
    > Why not **Send invitation**? Supabase's built-in email service only sends a few emails per hour.
    > On free plans it may also only deliver to members of your Supabase team, so invites to other staff
@@ -140,6 +149,24 @@ step 4b control what each person can do. **Do not** share the *service_role* key
 3. On your phone, scan a QR code from `docs/qr-codes.pdf` (or from the **QR codes** screen). Submit a test with your
    name and email. It should appear on the **Issues** screen within a few seconds. (Refresh the page if needed.)
 4. On the Issues screen, set your test issue to **Resolved** and click **Save**.
+
+---
+
+## Step 6b: Choose each person's side and access
+
+In the app, go to **Setup → People**. Everyone who has signed in or been added appears there.
+
+| Setting | Choices |
+|---|---|
+| **Side** | **Customer** starts on "Customer" for *Rating as* but can switch. **Vendor** can only rate as Vendor. |
+| **Access** | **Ops team (everything)** sees the dashboard, audit log, issues, QR codes and setup. **New audit only** sees just *New audit* and *Account*. |
+
+Set each person, click **Save** on their row, and fill in their **Name and role**. It fills in automatically on their audits.
+
+**Sharing the audit link with audit-only people.** Send them **https://bakern-ux.github.io/TPSops/#audit**
+with their email and temporary password. They sign in and land on *New audit*. The other screens don't appear for them,
+and the database itself refuses to show them audits, issues or other people. Typing a different address doesn't get around it.
+Each person still needs their own account, so audits are always tied to a real person.
 
 ---
 

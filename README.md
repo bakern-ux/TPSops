@@ -14,12 +14,13 @@ from Tennis Courts and Hubbard Field to Brokaw, Ellis, the SRC and West Campus.
 
 | Screen | Who uses it | Purpose |
 |---|---|---|
-| **Dashboard** | Operations team | Customer vs vendor scores, the alignment gap, weekly trend, the four scoring dimensions, audit and QR activity, a location × service-area scorecard, the largest gaps, open safety issues, time to resolve |
+| **Dashboard** | Operations team | Customer vs vendor scores, the alignment gap, weekly trend, the four scoring dimensions, audit and QR activity, **when QR feedback comes in** (day of week × time of day, low or high scores), a location × service-area scorecard, the largest gaps, open safety issues, time to resolve. **Click any bar, point, cell or row** for an item-by-item customer vs vendor comparison and the responses behind it. |
 | **New audit** | Customer and vendor auditors | Pick a side (customer or vendor), location and service area, then score 8 criteria from 1 to 5 or N/A. Safety items scored 1–2 open a safety issue automatically. |
 | **Audit log** | Everyone on staff | Every audit with criterion detail; CSV export |
 | **Issues** | Ops team, vendor | QR feedback and audit-flagged items. Set status, priority, owner and resolution. Export to Brightly. |
 | **QR codes** | Ops team | One printable QR card per location. A ready-to-print PDF is in `docs/qr-codes.pdf`. |
-| **Setup** | Ops team | Locations and which service areas apply to each; data export |
+| **Setup** | Ops team | Locations and the service areas for each; **People**: each person's side (customer or vendor) and access (Ops team, or New audit only); data export |
+| **Account** | Everyone signed in | Your name (fills in on audits), password, sign out |
 | **Feedback form** (`#report.<location>`) | Students, staff, parents, visitors | The page a QR code opens: topic, 1–5 rating, comment, safety flag, an optional name and email for follow-up. No login needed. |
 
 ### Scoring model
@@ -107,6 +108,7 @@ js/data.js            Service areas, criteria, dimensions, the 24 locations, sam
 js/store.js           Data layer: demo (localStorage) and live (Supabase), same API
 js/app.js             Screens, dashboard calculations, charts, QR, exports
 supabase/schema.sql   Tables and row-level security
+supabase/002_roles.sql  People, sides and access levels (run after schema.sql)
 vendor/               Chart.js 4.4.1, qrcode-generator 1.4.4, supabase-js 2.45.4 (MIT), bundled so nothing loads from a CDN
 docs/GETTING-STARTED.md  Beginner's guide to going live
 docs/qr-codes.pdf     Printable QR cards for all 24 locations (4 per page)
